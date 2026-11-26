@@ -1,0 +1,64 @@
+<div id="cinemateca-tarjeta-previa" class="viz-dotted-background">
+  <style>
+    #cinemateca-tarjeta-previa {
+      display: grid;
+      justify-items: center;
+      padding: 18px 12px;
+      font: 14px "Segoe UI", sans-serif;
+      color-scheme: light dark;
+    }
+    #cinemateca-tarjeta-previa .pelicula {
+      width: min(100%, 192px);
+      overflow: hidden;
+      border: 1px solid light-dark(#dce3eb, #3b4655);
+      border-radius: 12px;
+      background: light-dark(#fff, #202833);
+      color: light-dark(#233249, #eff4fa);
+    }
+    #cinemateca-tarjeta-previa .poster {
+      aspect-ratio: 2 / 3;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 7px;
+      background: linear-gradient(155deg, #263b51, #131e2e 68%, #2d3e54);
+      color: #e4ebf3;
+    }
+    #cinemateca-tarjeta-previa .datos {
+      display: grid;
+      gap: 3px;
+      padding: 10px 11px 11px;
+    }
+    #cinemateca-tarjeta-previa h2 { margin: 0; font-size: 15px; font-weight: 650; }
+    #cinemateca-tarjeta-previa .resumen { display: flex; align-items: baseline; gap: 9px; white-space: nowrap; }
+    #cinemateca-tarjeta-previa .anio { color: light-dark(#52647c, #b6c3d4); }
+    #cinemateca-tarjeta-previa .puntaje { font-weight: 600; }
+    #cinemateca-tarjeta-previa .estrella { color: light-dark(#895900, #ffc65a); }
+    #cinemateca-tarjeta-previa .acciones {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 5px;
+      white-space: nowrap;
+      color: light-dark(#235db8, #9bc2ff);
+      font-weight: 600;
+    }
+  </style>
+  <article class="pelicula" aria-label="Tarjeta de película de ejemplo">
+    <div class="poster" aria-label="Espacio del póster" role="img">
+      <i data-lucide="film" aria-hidden="true"></i>
+      <span>Póster</span>
+    </div>
+    <div class="datos">
+      <h2>Película de ejemplo</h2>
+      <div class="resumen">
+        <span class="anio">1995</span>
+        <span class="puntaje"><span class="estrella" aria-hidden="true">★</span> 7,2/10</span>
+      </div>
+      <div class="acciones"><span>Ficha</span><span>Imdb</span><span>Video</span></div>
+    </div>
+  </article>
+</div>
+
+
+

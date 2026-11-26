@@ -1,0 +1,796 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mi Cinemateca 1.14</title><style>
+:root{font-family:'Segoe UI',Arial,sans-serif;color:#233249;background:#f3f6fa}*{box-sizing:border-box}body{margin:0}header{background:white;border-bottom:1px solid #dce3ec;padding:22px 3%;display:flex;justify-content:space-between;align-items:center;gap:12px}h1{margin:0;font-size:25px}small,.muted{color:#64748b}.wrap{padding:24px 3%}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px;align-items:center}button,.pick{border:0;border-radius:9px;padding:12px 16px;background:#2764c5;color:white;font-weight:600;cursor:pointer;font-size:14px}button.secondary{background:#e5ebf3;color:#263c59}button:disabled{opacity:.5;cursor:wait}input[type=file]{display:none}input[type=search]{flex:1;min-width:210px;border:1px solid #cbd5e1;border-radius:9px;padding:12px;font-size:15px}.stats,#status{color:#52647c;margin:10px 0}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:18px}.movie{background:#fff;border:1px solid #dce3eb;border-radius:12px;overflow:hidden;box-shadow:0 3px 12px #2332490a}.poster{width:100%;aspect-ratio:2/3;object-fit:cover;background:#e3e8f0;display:flex;align-items:center;justify-content:center;color:#8996a8;font-size:40px}.details{padding:12px}.title{font-weight:650;overflow-wrap:anywhere;line-height:1.3;min-height:2.6em}.year{font-size:13px;color:#64748b;margin-top:5px}.links{margin-top:10px;display:flex;gap:12px;flex-wrap:wrap}.links button{background:none;color:#235db8;padding:0;font-weight:500;font-size:13px}.links a{color:#235db8;text-decoration:none;font-size:13px}.empty{padding:35px;border:1px dashed #b9c6d6;border-radius:12px;text-align:center;background:#fff;color:#63718a}.note{font-size:13px;color:#64748b;line-height:1.5;margin-top:22px}#status{min-height:20px;white-space:pre-line}#status.error{color:#b42318}.pill{display:inline-block;padding:5px 9px;border-radius:7px;background:#e8f1fd;color:#2459a1;font-size:12px}dialog{border:1px solid #d5dfeb;border-radius:14px;max-width:520px;width:90%;padding:22px;box-shadow:0 18px 70px #17233b40}dialog::backdrop{background:#12233a70}dialog h2{margin-top:0}dialog ul{padding-left:20px;line-height:1.9}dialog .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}@media(max-width:650px){.grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px}header,.wrap{padding:17px}}
+select,input[type=password]{padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;color:#233249} progress{width:100%;height:14px}.meta{font-size:12px;color:#52647c;margin-top:8px}
+.grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:12px}
+@media(min-width:1050px){.grid{grid-template-columns:repeat(auto-fill,minmax(min(160px,calc((100% - 60px) / 6)),1fr))}}
+.movie .details{display:grid;gap:3px;padding:9px 11px 11px;min-width:0}
+.movie .title{min-height:0;font-size:14px;line-height:1.25}
+.movie .year{margin:0}
+.movie .summary{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.movie .rating{font-size:13px;font-weight:600}
+.movie .star{color:#895900}
+.movie .links{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:baseline;gap:7px;margin-top:5px}
+.movie .links a,.movie .links button{font:400 13px/1.3 'Segoe UI',Arial,sans-serif;letter-spacing:normal}
+.video-dialog{max-width:760px}
+.video-dialog video{width:100%;max-height:65vh;background:#10151c;border-radius:8px}
+.video-dialog p{overflow-wrap:anywhere}
+#missingImdb[aria-pressed="true"]{background:#2764c5;color:#fff}</style></head><body><header><div><h1>🎬 Mi Cinemateca <small>1.14</small></h1><small>Catálogo visual · Windows 11 · Índice permanente</small></div><span class="pill" id="saveState">Cargando índice…</span></header><main class="wrap"><div class="controls"><button id="add">📁 Agregar carpeta</button><input id="folder" type="file" webkitdirectory directory multiple><input id="search" type="search" placeholder="Buscar por título o año…"><button class="secondary" id="locations">Ubicaciones</button><button class="secondary" id="clear">Vaciar índice</button></div><div class="controls"><input id="api" type="password" autocomplete="off" placeholder="Clave v3 o token de TMDb"><button id="missingImdb" class="secondary" aria-pressed="false">Sin enlace Imdb (0)</button><button id="enrich">Completar metadatos</button><button id="stop" class="secondary" disabled>Detener</button><span id="result" role="status"></span></div><div class="controls" id="filters"><select id="country"></select><select id="year"></select><select id="genre"></select><select id="language"></select><select id="pending"><option value="">Todas las fichas</option><option value="yes">Pendientes</option><option value="no">Con metadatos</option></select></div><progress id="progress" value="0" max="10" hidden></progress><div class="stats" id="stats">Cargando…</div><div id="status" role="status"></div><section class="grid" id="grid"></section><div class="empty" id="empty" hidden>Agregá una carpeta para comenzar.</div><p class="note">Los títulos, pósteres y rutas se guardan en el navegador de esta computadora. No se copian videos ni se modifica ninguna carpeta. Para abrir un video de una sesión anterior, el navegador puede pedir autorización para acceder al disco. Mantené este archivo en la misma ubicación y abrilo siempre con el mismo navegador y perfil. Este producto utiliza la API de TMDb, pero no está avalado ni certificado por TMDb. Metadatos: The Movie Database. La clave se conserva solo durante la sesión. Si falta el ID IMDb, se envían a TMDb el título y el año para buscar una coincidencia. Las fichas dudosas quedan pendientes.</p></main><dialog id="dlg"><h2>Ubicaciones incorporadas</h2><div id="locList"></div><div class="actions"><button class="secondary" id="closeDlg">Cerrar</button></div></dialog><script>
+'use strict';
+const $=id=>document.getElementById(id),catalog=new Map(),sources=new Map();let db=null,objectUrls=[],busy=false;
+const videoExt=/\.(mkv|mp4|avi|mov|wmv|m4v|webm|mpeg|mpg|ts)$/i,imageExt=/\.(jpg|jpeg|png|webp)$/i;
+function getYear(s){const m=s.match(/(?:^|\D)((?:18|19|20)\d{2})(?=\D|$)/);return m?m[1]:''}
+function clean(s){return s.replace(/^(?:18|19|20)\d{2}\s*[-–.]\s*/,'').replace(/\s*\((?:18|19|20)\d{2}\)\s*$/,'').trim()}
+function status(s,error=false){$('status').textContent=s;$('status').classList.toggle('error',error)}
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open('mi-cinemateca-1-1',1);req.onupgradeneeded=()=>{const d=req.result;d.createObjectStore('movies',{keyPath:'key'});d.createObjectStore('sources',{keyPath:'id'})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+function txStore(store,mode='readonly'){return db.transaction(store,mode).objectStore(store)}
+function all(store){return new Promise((res,rej)=>{const r=txStore(store).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function write(stores, update) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(stores, 'readwrite');
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error || Error('Se canceló el guardado del índice.'));
+    update(tx);
+  });
+}
+function put(store, record) {
+  return write(store, tx => tx.objectStore(store).put(record));
+}
+
+function keyFor(source,rel){return source+'|'+rel.toLocaleLowerCase()}
+function makeSource(name){return name.toLocaleLowerCase()}
+function posterOf(items){const ps=items.filter(x=>imageExt.test(x.base));return (ps.find(x=>/^poster\.(jpg|jpeg|png|webp)$/i.test(x.base))||ps.find(x=>/^poster[ _.-]/i.test(x.base)))?.file||null}
+const imdbSidecar = /\.(url|txt|webloc|website|nfo|desktop|inetloc|html?)$/i;
+function imdbId(text = '') {
+  const url = String(text).match(/(?:^|[^\w.@/+-])(?:(?:https?:)?\/\/)?(?:www\.|m\.|akas\.)?imdb\.com\/title\/(tt\d{7,})(?![\w-])/i);
+  return (url?.[1] || String(text).trim().match(/^(tt\d{7,})$/i)?.[1] || '').toLowerCase();
+}
+function idFromName(name) {
+  return name.match(/(?:^|[^a-z0-9])(tt\d{7,})(?=$|[^a-z0-9])/i)?.[1].toLowerCase() || '';
+}
+async function extractImdb(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const utf16 = bytes[0] === 0xff && bytes[1] === 0xfe || bytes[0] === 0xfe && bytes[1] === 0xff;
+  const text = new TextDecoder(utf16 && bytes[0] === 0xfe ? 'utf-16be' : utf16 ? 'utf-16le' : 'utf-8').decode(bytes);
+  const decoded = text.replaceAll('\0', '').replace(/&#(x[\da-f]+|\d+);/gi, (entity, value) => {
+    const code = value[0].toLowerCase() === 'x' ? parseInt(value.slice(1), 16) : Number(value);
+    return code < 128 ? String.fromCharCode(code) : entity;
+  });
+  return imdbId(decoded)
+    || imdbId(decoded.match(/(?:<imdb(?:id|_id)>|<uniqueid\s+type=["']imdb["'][^>]*>)\s*(tt\d{7,})\s*</i)?.[1]);
+}
+async function groupImdbId(items, videoName, folderName) {
+  const candidates = items.filter(item => imdbSidecar.test(item.base) || /^imdb$/i.test(item.base));
+  candidates.sort((a, b) => Number(/imdb/i.test(b.base)) - Number(/imdb/i.test(a.base)));
+  for (const candidate of candidates) {
+    try {
+      const id = await extractImdb(candidate.file);
+      if (id) return id;
+    } catch {
+      // A second shortcut or filename may still contain the ID.
+    }
+  }
+  return idFromName(videoName) || idFromName(folderName);
+}
+function movieId(movie) {
+  return imdbId(movie.imdbUrl) || idFromName(movie.videoName || '') || idFromName(movie.relative?.split('/').at(-1) || '');
+}
+const imdbLink = id => id ? 'https://www.imdb.com/title/' + id + '/' : '';
+function revoke(){objectUrls.forEach(URL.revokeObjectURL);objectUrls=[]}
+function imgUrl(blob){const u=URL.createObjectURL(blob);objectUrls.push(u);return u}
+function uniqueMovies(movies) {
+  const unique = new Map();
+  for (const movie of movies) {
+    const key = imdbId(movie.imdbUrl) || movieId(movie) || movie.key;
+    const previous = unique.get(key);
+    const score = entry => Number(Boolean(entry.meta)) * 4 + Number(Boolean(entry.poster)) * 2 + Number(Boolean(entry.videoHandle || entry.sessionVideo));
+    if (!previous || score(movie) > score(previous)) unique.set(key, movie);
+  }
+  return [...unique.values()];
+}
+let onlyMissingImdb = false;
+$('missingImdb').onclick = () => {
+  if (!db || busy) return;
+  onlyMissingImdb = !onlyMissingImdb;
+  if (onlyMissingImdb) {
+    for (const id of ['search','country','year','genre','language','pending']) $(id).value = '';
+  }
+  render();
+};
+function render(){refreshFilters();
+const movies=uniqueMovies(catalog.values());
+const missing=movies.filter(movie=>!movieId(movie)).length;
+$('missingImdb').textContent=onlyMissingImdb?'Ver todas · '+missing+' sin enlace Imdb':'Sin enlace Imdb ('+missing+')';
+$('missingImdb').setAttribute('aria-pressed',String(onlyMissingImdb));revoke();const q=$('search').value.toLocaleLowerCase().trim();const list=uniqueMovies([...catalog.values()].filter(m=>(m.title+' '+m.year+' '+m.relative+' '+m.sourceName).toLocaleLowerCase().includes(q) || (m.meta?.title+' '+m.meta?.original).toLocaleLowerCase().includes(q)).filter(matchesFilters)).filter(movie=>!onlyMissingImdb||!movieId(movie)).sort((a,b)=>a.title.localeCompare(b.title,'es'));$('stats').textContent=`${uniqueMovies(catalog.values()).length} películas en el índice · ${list.length} visibles · ${sources.size} ubicaciones`;const grid=$('grid');grid.replaceChildren();$('empty').hidden=list.length>0;$('empty').textContent=catalog.size?(onlyMissingImdb&&!missing?'Todas las películas tienen enlace Imdb.':'No se encontraron coincidencias.'):'Seleccioná una carpeta para comenzar el catálogo.';for(const m of list){const card=document.createElement('article');card.className='movie';if(m.poster){const im=document.createElement('img');im.className='poster';im.loading='lazy';im.alt='Póster de '+m.title;im.src=imgUrl(m.poster);card.append(im)}else{const p=document.createElement('div');p.className='poster';p.textContent='🎞';card.append(p)}const d=document.createElement('div');d.className='details';const t=document.createElement('div');t.className='title';t.textContent=m.title;t.title=m.title;d.append(t);const summary=document.createElement('div');
+summary.className='summary';
+const year=document.createElement('span');
+year.className='year';
+year.textContent=m.year||m.meta?.year||'Sin año';
+summary.append(year);
+const rating=imdbRatings.get(movieId(m));
+if(rating!==undefined){
+  const score=document.createElement('span');
+  score.className='rating';
+  score.setAttribute('aria-label','Puntaje IMDb: '+rating+' de 10');
+  const star=document.createElement('span');
+  star.className='star';
+  star.setAttribute('aria-hidden','true');
+  star.textContent='★ ';
+  score.append(star, new Intl.NumberFormat('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1}).format(rating)+'/10');
+  summary.append(score);
+}
+d.append(summary);
+const links=document.createElement('div');
+links.className='links';
+const details=document.createElement('button');
+details.textContent='Ficha';
+details.onclick=()=>onlyMissingImdb&&!movieId(m)?reviewMovie(m):showMeta(m);
+links.append(details);
+const imdb=document.createElement('a');
+imdb.textContent='Imdb';
+imdb.href=m.imdbUrl||'https://www.imdb.com/find/?'+new URLSearchParams({q:m.title||m.videoName||'',s:'tt'});
+imdb.target='_blank';
+imdb.rel='noopener noreferrer';
+links.append(imdb);
+const play=document.createElement('button');
+play.textContent='Video';
+play.onclick=()=>playMovie(m);
+links.append(play);
+d.append(links);
+card.append(d);
+grid.append(card);
+}
+queueBundledRatings();
+}
+async function playMovie(movie) {
+  let file;
+  try {
+    if (movie.videoHandle) {
+      const permission = await movie.videoHandle.queryPermission({mode:'read'});
+      if (permission !== 'granted' && await movie.videoHandle.requestPermission({mode:'read'}) !== 'granted') {
+        throw Error('Edge no tiene permiso para leer este archivo.');
+      }
+      file = await movie.videoHandle.getFile();
+    } else {
+      file = movie.sessionVideo;
+    }
+    if (!file) throw Error('Volvé a seleccionar la carpeta para habilitar el acceso al video.');
+  } catch (error) {
+    status('No se pudo abrir el video. '+error.message,true);
+    return;
+  }
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'video-dialog';
+  const heading = document.createElement('h2');
+  heading.textContent = movie.title || file.name;
+  const message = document.createElement('p');
+  message.setAttribute('role','status');
+  const player = document.createElement('video');
+  player.controls = true;
+  player.preload = 'metadata';
+  const close = document.createElement('button');
+  close.className = 'secondary';
+  close.textContent = 'Cerrar';
+  close.onclick = () => dialog.close();
+  dialog.append(heading,player,message,close);
+  document.body.append(dialog);
+  let url;
+  dialog.onclose = () => {
+    player.pause();
+    if (url) URL.revokeObjectURL(url);
+    dialog.remove();
+  };
+  const unsupported = () => {
+    player.hidden = true;
+    message.textContent = 'Edge no pudo reproducir el formato o códec. Abrí el archivo original con VLC desde el Explorador: ' +
+      [movie.sourceName,movie.relative,file.name].filter(Boolean).join(' / ');
+  };
+  player.addEventListener('error',unsupported,{once:true});
+  dialog.showModal();
+  if (/\.avi$/i.test(file.name)) {
+    unsupported();
+    return;
+  }
+  const suggestedType = /\.(m4v|mp4)$/i.test(file.name) ? 'video/mp4'
+    : /\.webm$/i.test(file.name) ? 'video/webm' : '';
+  const media = suggestedType && !file.type.startsWith('video/') ? file.slice(0,file.size,suggestedType) : file;
+  url = URL.createObjectURL(media);
+  player.src = url;
+  player.play().catch(() => {});
+}
+async function sameEntry(first, second) {
+  if (!first?.isSameEntry || !second) return false;
+  try { return await first.isSameEntry(second); } catch { return false; }
+}
+function relativeFile(relative, name) {
+  return relative ? relative + '/' + name : name;
+}
+async function sourceIdFor(name, rootHandle, handles) {
+  const legacyId = makeSource(name);
+  if (!rootHandle) return legacyId;
+  for (const source of sources.values()) {
+    if (await sameEntry(source.rootHandle, rootHandle)) return source.id;
+  }
+  const legacy = sources.get(legacyId);
+  if (!legacy) return legacyId;
+  if (!legacy.rootHandle) {
+    const oldMovies = [...catalog.values()].filter(movie => movie.sourceId === legacyId);
+    for (const movie of oldMovies) {
+      if (await sameEntry(movie.videoHandle, handles.get(relativeFile(movie.relative, movie.videoName)))) return legacyId;
+    }
+    if (oldMovies.every(movie => !movie.videoHandle)) return legacyId;
+  }
+  return legacyId + '|' + crypto.randomUUID();
+}
+async function indexGroups(sourceName, groups, handles, rootHandle) {
+  const sourceId = await sourceIdFor(sourceName, rootHandle, handles);
+  const source = {...sources.get(sourceId), id: sourceId, name: sourceName, added: new Date().toISOString()};
+  if (rootHandle) source.rootHandle = rootHandle;
+  await put('sources', source);
+  sources.set(sourceId, source);
+
+  const byFilename = new Map();
+  function rememberFile(movie) {
+    if (!movie.videoHandle || !movie.videoName) return;
+    const filename = movie.videoName.toLocaleLowerCase();
+    if (!byFilename.has(filename)) byFilename.set(filename, []);
+    byFilename.get(filename).push(movie);
+  }
+  for (const movie of catalog.values()) rememberFile(movie);
+
+  let count = 0, updated = 0, duplicates = 0;
+  const ids = new Set([...catalog.values()].map(movieId).filter(Boolean));
+  for (const [relative, items] of groups) {
+    const video = items.find(item => videoExt.test(item.base));
+    if (!video) continue;
+    const name = relative.split('/').at(-1) || sourceName;
+    const key = keyFor(sourceId, relative);
+    const videoHandle = handles?.get(relativeFile(relative, video.base));
+    const id = await groupImdbId(items, video.base, name);
+    const copies = byFilename.get(video.base.toLocaleLowerCase()) || [];
+    let previous = catalog.get(key);
+    if (!previous && videoHandle) {
+      for (const copy of copies) {
+        if (await sameEntry(copy.videoHandle, videoHandle)) {
+          previous = copy;
+          duplicates++;
+          break;
+        }
+      }
+    }
+    const previousId = movieId(previous || {});
+    if (!previous && id && ids.has(id)) duplicates++;
+    if (id) ids.add(id);
+    const entry = {
+      key: previous?.key || key,
+      sourceId: previous?.sourceId || sourceId,
+      sourceName: previous?.sourceName || sourceName,
+      relative: previous?.relative ?? relative,
+      title: clean(name) || name, year: getYear(name),
+      poster: posterOf(items) || previous?.poster || null,
+      imdbUrl: imdbLink(id || previousId),
+      videoName: video.base,
+      videoHandle: videoHandle || previous?.videoHandle || null,
+      sessionVideo: handles ? null : video.file
+    };
+    if (previous?.meta && previousId === movieId(entry)) entry.meta = previous.meta;
+    const saved = {...entry};
+    delete saved.sessionVideo;
+    await put('movies', saved);
+    catalog.set(entry.key, entry);
+    if (!previous) rememberFile(entry);
+    count++;
+    if (previous) updated++;
+    if (count % 20 === 0) {
+      status('Procesando ' + sourceName + ': ' + count + ' películas…');
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+  return {count, updated, duplicates};
+}
+async function addFallback(files){const groups=new Map();const sourceName=files[0]?.webkitRelativePath.split('/')[0];if(!sourceName)return;for(const f of files){const parts=f.webkitRelativePath.split('/');if(parts.length<2)continue;const relative=parts.slice(1,-1).join('/');if(!groups.has(relative))groups.set(relative,[]);groups.get(relative).push({base:parts.at(-1),file:f})}const result=await indexGroups(sourceName,groups,null);status(`Se examinaron ${groups.size} carpetas; ${result.count} contienen video (${result.updated} actualizadas · ${result.duplicates} coincidencias con otras rutas). ${metadataStatus()}`)}
+async function addPicker(){const handle=await window.showDirectoryPicker({mode:'read'});const groups=new Map(),handles=new Map();async function walk(dir,prefix=''){for await(const [name,child] of dir.entries()){if(child.kind==='directory')await walk(child,prefix?prefix+'/'+name:name);else{const rel=prefix?prefix+'/'+name:name;if(!groups.has(prefix))groups.set(prefix,[]);const file=await child.getFile();groups.get(prefix).push({base:name,file});if(videoExt.test(name))handles.set(rel,child)}}}await walk(handle);const result=await indexGroups(handle.name,groups,handles,handle);status(`Se examinaron ${groups.size} carpetas; ${result.count} contienen video (${result.updated} actualizadas · ${result.duplicates} coincidencias con otras rutas). ${metadataStatus()}`)}
+async function guarded(fn){if(busy)return;busy=true;$('add').disabled=true;status('Examinando carpetas…');try{await fn();render()}catch(e){if(e.name!=='AbortError')status('Error: '+e.message,true);else status('Selección cancelada.')}finally{busy=false;$('add').disabled=false}}
+$('add').onclick=()=>{if(busy||!db)return;if('showDirectoryPicker'in window&&window.isSecureContext)guarded(addPicker);else $('folder').click()};$('folder').onchange=e=>{const files=[...e.target.files];e.target.value='';if(files.length)guarded(()=>addFallback(files))};$('search').oninput=render;
+$('locations').onclick=()=>{const target=$('locList');target.replaceChildren();if(!sources.size)target.textContent='Todavía no agregaste carpetas.';for(const src of sources.values()){const p=document.createElement('p');p.textContent='📁 '+src.name+' — '+[...catalog.values()].filter(m=>m.sourceId===src.id).length+' películas';target.append(p)}$('dlg').showModal()};$('closeDlg').onclick=()=>$('dlg').close();
+$('clear').onclick=async()=>{if(busy||!db)return;if(!confirm('¿Vaciar todo el índice guardado? Esto NO elimina videos ni pósteres de tus discos.'))return;try{await write(['movies','sources'],tx=>{tx.objectStore('movies').clear();tx.objectStore('sources').clear()})}catch(e){status('No se pudo vaciar el índice: '+e.message,true);return}catalog.clear();sources.clear();status('Índice vaciado. Los archivos originales no se modificaron.');render()};
+
+function labels(values) {
+  return Array.isArray(values) ? [...new Set(values.filter(value => typeof value === 'string').map(value => value.trim()).filter(Boolean))] : [];
+}
+function normalizeMeta(meta) {
+  return meta && typeof meta === 'object' ? {
+    ...meta, year: String(meta.year || ''),
+    countries: labels(meta.countries), genres: labels(meta.genres), languages: labels(meta.languages)
+  } : undefined;
+}
+function needsMetadata(movie) {
+  return !movie.meta || (!movie.meta.spokenLanguagesChecked &&
+    ['countries', 'genres', 'languages'].some(field => !movie.meta[field].length));
+}
+const fields={country:['País','countries'],year:['Año','year'],genre:['Género','genres'],language:['Idioma','languages']};
+function values(m,k){return k==='year'?[String(m.meta?.year||m.year||'')].filter(Boolean):m.meta?.[fields[k][1]]||[]}
+function refreshFilters(){for(const [k,[label]] of Object.entries(fields)){const el=$(k),old=el.value;el.replaceChildren(new Option(label+' · Todos',''));const vals=[...new Set([...catalog.values()].flatMap(m=>values(m,k)))].sort((a,b)=>a.localeCompare(b,'es'));for(const v of vals)el.add(new Option(v,v));if(vals.includes(old))el.value=old}}
+function matchesFilters(m){return Object.keys(fields).every(k=>!$(k).value||values(m,k).includes($(k).value))&&(!$('pending').value||($('pending').value==='yes'?!m.meta:!!m.meta))}
+for(const k of [...Object.keys(fields),'pending'])$(k).onchange=render;
+function showMeta(movie) {
+  const dialog = document.createElement('dialog');
+  const heading = document.createElement('h2');
+  heading.textContent = movie.meta?.title || movie.title || movie.videoName || 'Película';
+  dialog.append(heading);
+  const meta = movie.meta;
+  if (meta) {
+    const rows = [
+      meta.original && meta.original !== heading.textContent ? meta.original : '',
+      'Año: ' + (meta.year || movie.year || 'Sin identificar'),
+      'País: ' + (meta.countries.join(', ') || 'Sin datos'),
+      'Género: ' + (meta.genres.join(', ') || 'Sin datos'),
+      'Idioma: ' + (meta.languages.join(', ') || 'Sin datos'),
+      'Dirección: ' + (meta.director || 'Sin datos'),
+      'Duración: ' + (meta.runtime ? meta.runtime + ' min' : 'Sin datos'),
+      meta.overview || 'Sin sinopsis'
+    ];
+    for (const line of rows.filter(Boolean)) {
+      const item = document.createElement('p');
+      item.textContent = line;
+      dialog.append(item);
+    }
+  } else {
+    const item = document.createElement('p');
+    item.textContent = (movie.year ? movie.year + ' · ' : '') + 'Metadatos pendientes. Podés buscar por título o pegar un enlace IMDb y confirmar la película.';
+    dialog.append(item);
+  }
+  if (needsMetadata(movie) || !movieId(movie)) {
+    const complete = document.createElement('button');
+    complete.textContent = needsMetadata(movie) ? 'Completar ficha' : 'Vincular Imdb';
+    complete.onclick = () => {
+      if (busy) return;
+      dialog.close();
+      reviewMovie(movie);
+    };
+    dialog.append(complete);
+  }
+  const close = document.createElement('button');
+  close.className = 'secondary';
+  close.textContent = 'Cerrar';
+  close.onclick = () => dialog.close();
+  dialog.append(close);
+  dialog.onclose = () => dialog.remove();
+  document.body.append(dialog);
+  dialog.showModal();
+}
+let activeRequest = null;
+$('stop').onclick = () => activeRequest?.abort();
+
+async function apiCall(path, credential, signal, params = {}) {
+  const url = new URL('https://api.themoviedb.org/3/' + path);
+  url.search = new URLSearchParams({language: 'es-AR', ...params});
+  const headers = {};
+  const token = credential.match(/^(?:Bearer\s+)?(eyJ\S+)$/i) || credential.match(/^Bearer\s+(\S+)$/i);
+  if (token) headers.Authorization = 'Bearer ' + token[1];
+  else url.searchParams.set('api_key', credential);
+  let response;
+  try {
+    response = await fetch(url, {
+      headers, signal: AbortSignal.any([signal, AbortSignal.timeout(25000)]), redirect: 'error'
+    });
+  } catch {
+    signal.throwIfAborted();
+    const error = Error('Sin conexión con TMDb o se agotó el tiempo de espera.');
+    error.halt = true;
+    throw error;
+  }
+  if (!response.ok) {
+    const error = Error('TMDb respondió HTTP ' + response.status + '.');
+    error.halt = [401, 403, 429].includes(response.status) || response.status >= 500;
+    throw error;
+  }
+  return response.json();
+}
+const region = new Intl.DisplayNames(['es'], {type: 'region', fallback: 'none'});
+const language = new Intl.DisplayNames(['es'], {type: 'language', fallback: 'none'});
+const listOf = value => Array.isArray(value) ? value.filter(item => item && typeof item === 'object') : [];
+function displayName(names, code, fallback) {
+  if (typeof code === 'string' && /^[a-z]{2,3}$/i.test(code) && (names !== region || code.length === 2)) {
+    return names.of(code) || fallback || code;
+  }
+  return fallback || '';
+}
+function normalizeTitle(title) {
+  return String(title || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/['’]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+function titleQueries(movie) {
+  const year = String(movie.year || '');
+  if (!/^(?:18|19|20)\d{2}$/.test(year)) return [];
+  const title = String(movie.title || '').replace(new RegExp('(?:^|[\\s(])' + year + '\\)?$'), '').trim();
+  const variants = [title, ...title.split(/\s+[-–—]\s+|\s*\(\s*|\s*\)\s*|\s*\|\s*/)];
+  return [...new Map(variants.map(value => [normalizeTitle(value), value.trim()])
+    .filter(([normalized]) => normalized.length >= 2)).values()];
+}
+function needsReview(message) {
+  return Object.assign(Error(message), {review: true});
+}
+async function searchMovie(movie, credential, signal) {
+  const queries = titleQueries(movie);
+  const titles = new Set(queries.map(normalizeTitle));
+  const matches = new Set();
+  const sameYear = new Set();
+  for (const query of queries) {
+    const first = await apiCall('search/movie', credential, signal, {query, primary_release_year: movie.year});
+    const pages = Number(first.total_pages || 1);
+    if (pages > 5) throw needsReview('Demasiados resultados de TMDb para confirmar la película.');
+    for (let page = 1; page <= pages; page++) {
+      const result = page === 1 ? first : await apiCall('search/movie', credential, signal, {query, primary_release_year: movie.year, page});
+      for (const item of listOf(result.results)) {
+        if (!Number.isSafeInteger(item.id) || item.id <= 0 ||
+            String(item.release_date || '').slice(0, 4) !== String(movie.year)) continue;
+        sameYear.add(item.id);
+        if ([item.title, item.original_title].some(title => titles.has(normalizeTitle(title)))) matches.add(item.id);
+      }
+      if (matches.size > 1) throw needsReview('Varias películas coinciden en título y año.');
+    }
+  }
+  if (!matches.size && sameYear.size <= 8) {
+    for (const id of sameYear) {
+      const aliases = await apiCall('movie/' + id + '/alternative_titles', credential, signal);
+      if (listOf(aliases.titles).some(item => titles.has(normalizeTitle(item.title)))) matches.add(id);
+      if (matches.size > 1) throw needsReview('Varias películas coinciden en título alternativo y año.');
+    }
+  }
+  if (!matches.size) throw needsReview('TMDb no devolvió una coincidencia exacta de título y año.');
+  return [...matches][0];
+}
+async function findMovie(id, credential, signal) {
+  const found = await apiCall('find/' + id, credential, signal, {external_source: 'imdb_id'});
+  const tmdbId = found.movie_results?.[0]?.id;
+  if (!Number.isSafeInteger(tmdbId) || tmdbId <= 0) throw needsReview('IMDb sin coincidencia cinematográfica en TMDb.');
+  return tmdbId;
+}
+async function fetchMetadata(id, movie, credential, signal) {
+  const tmdbId = id ? await findMovie(id, credential, signal) : await searchMovie(movie, credential, signal);
+  return fetchMovieDetails(tmdbId, id, movie, credential, signal);
+}
+async function fetchMovieDetails(tmdbId, id, movie, credential, signal) {
+  const data = await apiCall('movie/' + tmdbId, credential, signal, {append_to_response: 'credits'});
+  if (data.id !== tmdbId || (id && data.imdb_id && imdbId(data.imdb_id) !== id)) {
+    throw Error('TMDb devolvió una ficha que no coincide con el identificador IMDb.');
+  }
+  const meta = normalizeMeta({
+    title: data.title || movie.title,
+    original: data.original_title || '',
+    year: String(data.release_date || '').slice(0, 4),
+    countries: listOf(data.production_countries).map(item => displayName(region, item.iso_3166_1, item.name)),
+    genres: listOf(data.genres).map(item => item.name),
+    languages: [
+      displayName(language, data.original_language),
+      ...listOf(data.spoken_languages).map(item => displayName(language, item.iso_639_1, item.english_name || item.name))
+    ],
+    director: listOf(data.credits?.crew).filter(item => item.job === 'Director').map(item => item.name).join(', '),
+    runtime: data.runtime, overview: data.overview, spokenLanguagesChecked: true
+  });
+  return {meta, id: id || imdbId(data.imdb_id)};
+}
+let imdbRatings = new Map();
+let bundledRatingsRequest;
+let ratingScanActive = false;
+const checkedRatingIds = new Set();
+function loadBundledRatings() {
+  if (!bundledRatingsRequest) {
+    bundledRatingsRequest = new Promise((resolve,reject) => {
+      const loader = document.createElement('script');
+      loader.src = 'Mi_Cinemateca_Puntajes_IMDb.js';
+      loader.onload = () => {
+        const encoded = window.cinematecaImdbRatings;
+        delete window.cinematecaImdbRatings;
+        loader.remove();
+        if (!encoded) { reject(Error('Archivo de puntajes vacío.')); return; }
+        try {
+          const bytes = typeof Uint8Array.fromBase64 === 'function'
+            ? Uint8Array.fromBase64(encoded)
+            : Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
+          resolve(new File([bytes],'title.ratings.tsv.gz'));
+        } catch (error) { reject(error); }
+      };
+      loader.onerror = () => {
+        loader.remove();
+        reject(Error('Falta Mi_Cinemateca_Puntajes_IMDb.js.'));
+      };
+      document.head.append(loader);
+    });
+  }
+  return bundledRatingsRequest;
+}
+function queueBundledRatings() {
+  if (ratingScanActive) return;
+  const pending = new Set([...catalog.values()].map(movieId).filter(id=>id&&!imdbRatings.has(id)&&!checkedRatingIds.has(id)));
+  if (!pending.size) return;
+  ratingScanActive = true;
+  loadBundledRatings().then(file=>importRatings(file,pending)).then(matches=>{
+    for (const [id,value] of matches) {
+      if (!imdbRatings.has(id)) imdbRatings.set(id,value);
+    }
+    if (matches.size) render();
+  }).catch(()=>{
+    const notice = $('saveState');
+    notice.title = 'No se pudo leer el archivo de puntajes incluido. Dejá Mi_Cinemateca_Puntajes_IMDb.js junto al catálogo.';
+  }).finally(()=>{
+    for (const id of pending) checkedRatingIds.add(id);
+    ratingScanActive = false;
+    queueBundledRatings();
+  });
+}
+function openRatings() {
+  return new Promise((resolve,reject) => {
+    const request = indexedDB.open('mi-cinemateca-imdb-ratings',1);
+    request.onupgradeneeded = () => request.result.createObjectStore('ratings');
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function readRatings() {
+  const database = await openRatings();
+  try {
+    return await new Promise((resolve,reject) => {
+      const request = database.transaction('ratings').objectStore('ratings').get('catalog');
+      request.onsuccess = () => resolve(new Map(request.result || []));
+      request.onerror = () => reject(request.error);
+    });
+  } finally { database.close(); }
+}
+async function importRatings(file, wanted) {
+  let stream = file.stream();
+  if (/\.gz$/i.test(file.name)) stream = stream.pipeThrough(new DecompressionStream('gzip'));
+  const reader = stream.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '', header = false;
+  const matches = new Map();
+  function process(line) {
+    line = line.trimEnd();
+    if (!header) {
+      if (line !== 'tconst\taverageRating\tnumVotes') throw Error('Elegí el archivo oficial title.ratings.tsv.gz de IMDb.');
+      header = true;
+      return;
+    }
+    const separator = line.indexOf('\t');
+    if (separator < 0) return;
+    const id = line.slice(0,separator);
+    if (!wanted.has(id)) return;
+    const row = line.split('\t');
+    const score = Number(row[1]);
+    if (Number.isFinite(score) && score >= 1 && score <= 10 && Number(row[2]) > 0) matches.set(id,score);
+  }
+  try {
+    while (true) {
+      const {done,value} = await reader.read();
+      if (done) break;
+      const lines = (buffer+value).split('\n');
+      buffer = lines.pop();
+      for (const line of lines) process(line);
+    }
+    if (buffer) process(buffer);
+    if (!header) throw Error('El archivo de puntajes está vacío.');
+    return matches;
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+function reviewMovie(movie) {
+  if (busy || !db) return;
+  const credential = $('api').value.trim();
+  $('result').textContent = '';
+  $('progress').hidden = true;
+  status(metadataStatus());
+  const dialog = document.createElement('dialog');
+  const heading = document.createElement('h2');
+  heading.textContent = [movie.title || movie.videoName || 'Película sin título', movie.year].filter(Boolean).join(' · ');
+  const form = document.createElement('form');
+  const label = document.createElement('label');
+  label.textContent = 'Título alternativo o enlace IMDb';
+  const query = document.createElement('input');
+  query.type = 'search';
+  query.required = true;
+  query.value = movie.imdbUrl || titleQueries(movie)[0] || movie.title || '';
+  label.append(document.createElement('br'), query);
+  const search = document.createElement('button');
+  search.type = 'submit';
+  search.textContent = 'Buscar en TMDb';
+  const linkImdb = document.createElement('button');
+  linkImdb.type = 'button';
+  linkImdb.className = 'secondary';
+  linkImdb.textContent = 'Vincular Imdb';
+  linkImdb.disabled = !imdbId(query.value);
+  query.oninput = () => { linkImdb.disabled = saving || !imdbId(query.value); };
+  form.append(label, search, linkImdb);
+  const feedback = document.createElement('p');
+  feedback.setAttribute('role', 'status');
+  const results = document.createElement('ul');
+  const close = document.createElement('button');
+  close.className = 'secondary';
+  close.textContent = 'Cerrar';
+  close.onclick = () => dialog.close();
+  dialog.append(heading, form, feedback, results, close);
+  document.body.append(dialog);
+
+  const controller = new AbortController();
+  busy = true;
+  let saving = false;
+  dialog.oncancel = event => { if (saving) event.preventDefault(); };
+  dialog.onclose = () => {
+    controller.abort();
+    busy = false;
+    dialog.remove();
+  };
+
+  async function saveReview(resolveMatch, message) {
+    if (saving || search.disabled || controller.signal.aborted) return;
+    saving = true;
+    search.disabled = close.disabled = linkImdb.disabled = query.disabled = true;
+    feedback.textContent = 'Guardando…';
+    try {
+      const found = await resolveMatch();
+      const saved = {...movie, imdbUrl: imdbLink(found.id), meta: found.meta};
+      delete saved.sessionVideo;
+      await put('movies', saved);
+      movie.imdbUrl = saved.imdbUrl;
+      movie.meta = saved.meta;
+      $('result').textContent = message + ': ' + (movie.title || found.meta?.title || 'película');
+      status(metadataStatus());
+      dialog.close();
+      render();
+    } catch (error) {
+      feedback.textContent = error.message;
+    } finally {
+      saving = false;
+      search.disabled = close.disabled = query.disabled = false;
+      linkImdb.disabled = !imdbId(query.value);
+    }
+  }
+  linkImdb.onclick = () => {
+    const id = imdbId(query.value);
+    if (id) saveReview(() => ({id,meta:movie.meta}),'Enlace Imdb guardado');
+  };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const text = query.value.trim();
+    if (!text || search.disabled) return;
+    if (!credential) {
+      feedback.textContent = 'Para buscar en TMDb, cerrá esta ventana e ingresá la clave arriba. Si ya tenés el enlace de IMDb, podés pegarlo y pulsar Vincular Imdb.';
+      return;
+    }
+    search.disabled = true;
+    results.replaceChildren();
+    feedback.textContent = 'Buscando…';
+    try {
+      const id = imdbId(text);
+      let candidates;
+      if (id) {
+        const tmdbId = await findMovie(id, credential, controller.signal);
+        const data = await apiCall('movie/' + tmdbId, credential, controller.signal);
+        if (data.id !== tmdbId || (data.imdb_id && imdbId(data.imdb_id) !== id)) {
+          throw Error('La ficha devuelta no coincide con el ID IMDb.');
+        }
+        candidates = [data];
+      } else {
+        const response = await apiCall('search/movie', credential, controller.signal, {query: text});
+        const distance = item => movie.year && item.release_date ? Math.abs(Number(movie.year) - Number(item.release_date.slice(0, 4))) : Infinity;
+        candidates = listOf(response.results).sort((a,b) => distance(a) - distance(b));
+      }
+      controller.signal.throwIfAborted();
+      for (const item of candidates) {
+        if (!Number.isSafeInteger(item.id) || item.id <= 0) continue;
+        const row = document.createElement('li');
+        const title = [item.title, item.original_title !== item.title ? item.original_title : '', item.release_date?.slice(0, 4)].filter(Boolean).join(' · ');
+        const link = document.createElement('a');
+        link.href = 'https://www.themoviedb.org/movie/' + item.id;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = title || 'Ver ficha en TMDb';
+        const button = document.createElement('button');
+        button.textContent = 'Guardar esta ficha';
+        button.onclick = () => saveReview(() => fetchMovieDetails(item.id,id,movie,credential,controller.signal),'Ficha guardada');
+        row.append(link, document.createTextNode(' '), button);
+        results.append(row);
+      }
+      feedback.textContent = results.childElementCount
+        ? 'Compará el título y el año antes de guardar. Si no aparece tu película, probá otro título o un enlace IMDb.'
+        : 'Sin resultados. Probá otro título o un enlace IMDb.';
+    } catch (error) {
+      if (!controller.signal.aborted) feedback.textContent = error.message;
+    } finally {
+      search.disabled = false;
+    }
+  };
+  dialog.showModal();
+}
+function metadataStatus() {
+  let ready = 0, linked = 0, searchable = 0, blocked = 0;
+  for (const movie of uniqueMovies(catalog.values())) {
+    if (movie.meta) ready++;
+    if (needsMetadata(movie)) {
+      if (movieId(movie)) linked++;
+      else if (titleQueries(movie).length) searchable++;
+      else blocked++;
+    }
+  }
+  return `${ready} con ficha · ${linked} por consultar con IMDb · ${searchable} por buscar por título y año · ${blocked} sin ID IMDb o título y año suficientes`;
+}
+async function enrich() {
+  if (busy || !db) return;
+  const credential = $('api').value.trim();
+  if (!credential) {
+    status('Ingresá la clave v3 o el token de lectura de TMDb.', true);
+    return;
+  }
+  const batch = uniqueMovies(catalog.values()).filter(movie => needsMetadata(movie) && (movieId(movie) || titleQueries(movie).length));
+  if (!batch.length) {
+    $('result').textContent = 'Sin películas para consultar';
+    status(metadataStatus());
+    return;
+  }
+  busy = true;
+  const controller = new AbortController();
+  activeRequest = controller;
+  for (const id of ['add', 'clear', 'missingImdb', 'enrich']) $(id).disabled = true;
+  $('stop').disabled = false;
+  const progress = $('progress');
+  progress.hidden = false;
+  progress.max = batch.length;
+  progress.value = 0;
+  let completed = 0, review = 0, failed = 0, interrupted = false;
+  const errors = [];
+  const metadataById = new Map();
+  try {
+    for (const movie of batch) {
+      if (controller.signal.aborted) break;
+      status('Consultando ' + movie.title + '…');
+      try {
+        const id = movieId(movie);
+        const found = metadataById.get(id) || await fetchMetadata(id, movie, credential, controller.signal);
+        if (id) metadataById.set(id, found);
+        controller.signal.throwIfAborted();
+        const {meta} = found;
+        const saved = {...movie, imdbUrl: imdbLink(found.id), meta};
+        delete saved.sessionVideo;
+        await put('movies', saved);
+        movie.imdbUrl = saved.imdbUrl;
+        movie.meta = meta;
+        completed++;
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        if (error.review) {
+          review++;
+        } else {
+          failed++;
+          const message = error instanceof SyntaxError ? 'TMDb devolvió una respuesta ilegible.' : error.message;
+          errors.push(movie.title + ': ' + message);
+          if (error.halt) {
+            interrupted = true;
+            break;
+          }
+        }
+      } finally {
+        progress.value = completed + review + failed;
+        $('result').textContent = `${completed} guardadas · ${review} para revisar · ${failed} errores`;
+      }
+      if (completed + review + failed < batch.length && !controller.signal.aborted) await new Promise(resolve => setTimeout(resolve, 300));
+    }
+  } finally {
+    busy = false;
+    activeRequest = null;
+    for (const id of ['add', 'clear', 'missingImdb', 'enrich']) $(id).disabled = false;
+    $('stop').disabled = true;
+    const state = controller.signal.aborted ? 'Detenido' : interrupted ? 'Interrumpido' : 'Finalizado';
+    $('result').textContent = `${state}: ${completed} guardadas · ${review} para revisar · ${failed} errores`;
+    const details = errors.slice(0, 5);
+    if (errors.length > details.length) details.push(`Y ${errors.length - details.length} errores más.`);
+    const reviewHint = review ? ['Abrí Ficha en una película pendiente para buscar y confirmar la coincidencia.'] : [];
+    status([metadataStatus(), ...reviewHint, ...details].join('\n'), failed > 0);
+    render();
+  }
+}
+$('enrich').onclick = enrich;
+
+(async()=>{try{db=await openDB();for(const m of await all('movies')){m.meta=normalizeMeta(m.meta);m.imdbUrl=imdbLink(movieId(m));catalog.set(m.key,m)}for(const s of await all('sources'))sources.set(s.id,s);try{imdbRatings=await readRatings()}catch{}$('saveState').textContent='✓ Índice local activo';status('Índice recuperado. '+metadataStatus());render()}catch(e){$('saveState').textContent='Error de almacenamiento';status('No se pudo abrir el índice local: '+e.message,true);$('add').disabled=true}})();
+</script></body></html>
+

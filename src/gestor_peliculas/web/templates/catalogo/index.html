@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block titulo %}Mi Cinemateca{% endblock %}
+{% block subtitulo %}Catalogo visual &middot; indice permanente en tu computadora{% endblock %}
+
+{% block pastilla %}
+  <span class="cine-pastilla">&#10003; {{ resumen.total }} peliculas en el indice</span>
+{% endblock %}
+
+{% block contenido %}
+  {% include "catalogo/_filtros.html" %}
+
+  {# Lote de metadatos: boton, barra de progreso y Detener, como en la 1.14 #}
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    {% if hay_credencial_tmdb %}
+      <form method="post" action="{{ url_for('metadatos.completar') }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="volver" value="{{ request.full_path }}">
+        <button class="btn btn-primary" type="submit"
+                {{ 'disabled' if tarea_metadatos and tarea_metadatos.estado.viva }}>
+          Completar metadatos
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('metadatos.detener') }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="volver" value="{{ request.full_path }}">
+        <button class="btn btn-secondary" type="submit"
+                {{ '' if tarea_metadatos and tarea_metadatos.estado.viva else 'disabled' }}>
+          Detener
+        </button>
+      </form>
+    {% endif %}
+
+    <span class="text-secondary small">
+      {{ resumen.con_ficha }} con ficha &middot; {{ resumen.pendientes }} pendientes
+      &middot; {{ resumen.con_puntaje }} con puntaje
+    </span>
+  </div>
+
+  {% if not hay_credencial_tmdb %}
+    <div class="alert alert-info py-2">
+      Para completar los metadatos hace falta la clave de TMDb en el archivo
+      <code>.env</code> del proyecto, en la linea <code>TMDB_TOKEN</code>.
+      Se obtiene en themoviedb.org/settings/api
+    </div>
+  {% endif %}
+
+  {% for tarea in [tarea_metadatos, tarea_indexado] if tarea %}
+    <div class="mb-3 panel-tarea" data-tarea="{{ tarea.id }}"
+         {{ 'data-viva=1' if tarea.estado.viva }}>
+      <div class="d-flex justify-content-between align-items-baseline">
+        <strong>{{ tarea.titulo }}</strong>
+        <span class="text-secondary small js-estado">{{ tarea.estado.etiqueta }}</span>
+      </div>
+      <div class="progress mt-1" role="progressbar" aria-label="{{ tarea.titulo }}">
+        <div class="progress-bar js-barra" style="width: {{ tarea.porcentaje }}%"></div>
+      </div>
+      <div class="cine-estado js-mensaje">{{ tarea.mensaje }}</div>
+    </div>
+  {% endfor %}
+
+  <div class="cine-estado">
+    {{- resumen.total }} {{ 'pelicula' if resumen.total == 1 else 'peliculas' }} en el indice
+    {%- if filtro.activo %} &middot;
+      {{ pagina.total }} {{ 'coincide' if pagina.total == 1 else 'coinciden' }}{% endif %}
+    {%- if pagina.total_paginas > 1 %} &middot;
+      mostrando {{ pagina.desde }} a {{ pagina.hasta }}{% endif %} &middot;
+    {{ resumen.ubicaciones }} {{ 'ubicacion' if resumen.ubicaciones == 1 else 'ubicaciones' }}
+  </div>
+
+  {% if pagina.peliculas %}
+    <section class="cine-grilla">
+      {% for pelicula in pagina.peliculas %}
+        {% include "catalogo/_tarjeta.html" %}
+      {% endfor %}
+    </section>
+    {% include "catalogo/_paginacion.html" %}
+  {% else %}
+    <div class="cine-vacio">
+      {% if resumen.total == 0 %}
+        Todavia no hay peliculas en el indice.
+        <a href="{{ url_for('ubicaciones.index') }}">Agrega una carpeta</a> para empezar.
+      {% elif filtro.sin_imdb and resumen.sin_imdb == 0 %}
+        Todas las peliculas tienen enlace de IMDb.
+      {% else %}
+        No se encontraron coincidencias con esos filtros.
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <p class="cine-nota">
+    Los titulos, posteres y rutas se guardan en una base de datos local de esta
+    computadora. No se copian videos ni se modifica ninguna carpeta de tu coleccion.
+    Este producto utiliza la API de TMDb, pero no esta avalado ni certificado por TMDb.
+    Metadatos: The Movie Database. Puntajes: IMDb Non-Commercial Datasets.
+  </p>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/progreso.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/reproductor.js') }}"></script>
+{% endblock %}

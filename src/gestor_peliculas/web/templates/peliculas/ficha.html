@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block titulo %}{{ pelicula.titulo }} &middot; Mi Cinemateca{% endblock %}
+{% block subtitulo %}Ficha de la pelicula{% endblock %}
+
+{% block contenido %}
+  <a class="btn btn-secondary btn-sm mb-3" href="{{ url_for('catalogo.index') }}">
+    &larr; Volver al catalogo</a>
+
+  <div class="row g-4">
+    <div class="col-12 col-md-4 col-lg-3">
+      {% if pelicula.poster_relativo %}
+        <img class="ficha-poster" alt="Poster de {{ pelicula.titulo }}"
+             src="{{ url_for('medios.poster_original', pelicula_id=pelicula.id) }}">
+      {% else %}
+        <div class="ficha-poster poster-vacio d-grid" style="aspect-ratio: 2/3"
+             role="img" aria-label="Sin poster">&#127902;</div>
+      {% endif %}
+
+      <div class="d-grid gap-2 mt-3">
+        <button class="btn btn-primary btn-reproducir" type="button"
+                data-pelicula="{{ pelicula.id }}"
+                {{ 'disabled' if not vlc_disponible }}>
+          &#9654; Reproducir en VLC
+        </button>
+        <button class="btn btn-secondary btn-abrir-carpeta" type="button"
+                data-pelicula="{{ pelicula.id }}">
+          &#128193; Abrir la carpeta
+        </button>
+        <a class="btn btn-secondary" href="{{ pelicula.enlace_imdb }}"
+           target="_blank" rel="noopener noreferrer">Ver en IMDb</a>
+      </div>
+
+      {% if not vlc_disponible %}
+        <p class="cine-nota">
+          No encontramos VLC en esta computadora. Se puede instalar desde
+          videolan.org, o indicar su ruta en el archivo <code>.env</code>
+          (<code>VLC_RUTA</code>).
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="col-12 col-md-8 col-lg-9">
+      <h2 class="mb-1">{{ pelicula.titulo }}</h2>
+      {% if pelicula.metadatos and pelicula.metadatos.titulo_original
+            and pelicula.metadatos.titulo_original != pelicula.titulo %}
+        <p class="text-secondary fst-italic">{{ pelicula.metadatos.titulo_original }}</p>
+      {% endif %}
+
+      <div class="d-flex align-items-baseline gap-3 mb-3">
+        <span class="text-secondary">{{ pelicula.anio or 'Anio sin identificar' }}</span>
+        {% if pelicula.puntaje %}
+          <span class="puntaje">
+            <span class="estrella" aria-hidden="true">&#9733;</span>
+            {{ pelicula.puntaje.puntaje | puntaje_es }}
+            <span class="text-secondary small">
+              ({{ pelicula.puntaje.votos | miles_es }} votos en IMDb)</span>
+          </span>
+        {% endif %}
+      </div>
+
+      {% if pelicula.metadatos %}
+        {% set meta = pelicula.metadatos %}
+        <dl class="ficha-dato">
+          <dt>Pais</dt><dd>{{ meta.paises | lista_es }}</dd>
+          <dt>Genero</dt><dd>{{ meta.generos | lista_es }}</dd>
+          <dt>Idioma</dt><dd>{{ meta.idiomas | lista_es }}</dd>
+          <dt>Direccion</dt><dd>{{ meta.director or 'Sin datos' }}</dd>
+          <dt>Duracion</dt><dd>{{ meta.duracion_min | duracion_es or 'Sin datos' }}</dd>
+        </dl>
+        <p class="mt-3">{{ meta.sinopsis or 'Sin sinopsis.' }}</p>
+      {% else %}
+        <div class="cine-vacio text-start">
+          <p class="mb-2"><strong>Metadatos pendientes.</strong></p>
+          <p class="mb-0">
+            Se puede buscar la ficha por titulo, o pegar el enlace de IMDb y vincularlo.
+          </p>
+        </div>
+      {% endif %}
+
+      <hr class="my-4">
+
+      <h3 class="fs-5">Enlace y archivos</h3>
+      <dl class="ficha-dato">
+        <dt>IMDb</dt>
+        <dd>
+          {% if pelicula.imdb_id %}
+            <code>{{ pelicula.imdb_id }}</code>
+          {% else %}
+            <span class="text-secondary">Sin enlace</span>
+          {% endif %}
+        </dd>
+        <dt>Ubicacion</dt><dd>{{ pelicula.ubicacion_nombre }}</dd>
+        <dt>Carpeta</dt><dd class="ruta-actual">{{ pelicula.ruta_relativa or '(raiz)' }}</dd>
+        <dt>Video</dt>
+        <dd class="ruta-actual">
+          {{ pelicula.archivo_video }}
+          <span class="text-secondary">({{ pelicula.tamanio_bytes | tamanio_es }})</span>
+        </dd>
+        <dt>Estado</dt>
+        <dd>
+          {{ pelicula.estado_revision.etiqueta }}
+          {% if pelicula.detalle_revision %}
+            <div class="text-secondary small">{{ pelicula.detalle_revision }}</div>
+          {% endif %}
+        </dd>
+      </dl>
+
+      {% if copias %}
+        <div class="alert alert-info mt-3">
+          <strong>Esta pelicula esta en {{ copias | length + 1 }} carpetas.</strong>
+          <ul class="mb-0 mt-2">
+            {% for copia in copias %}
+              <li>
+                <a href="{{ url_for('peliculas.ficha', pelicula_id=copia.id) }}">
+                  {{ copia.ubicacion_nombre }} / {{ copia.ruta_relativa }}</a>
+                <span class="text-secondary small">({{ copia.tamanio_bytes | tamanio_es }})</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <hr class="my-4">
+
+      <div class="d-flex flex-wrap gap-2">
+        {% if hay_credencial_tmdb %}
+          <button class="btn btn-primary" type="button" id="completarFicha"
+                  data-pelicula="{{ pelicula.id }}">
+            {{ 'Actualizar ficha' if pelicula.tiene_ficha else 'Completar ficha' }}
+          </button>
+        {% endif %}
+        <a class="btn btn-secondary"
+           href="{{ url_for('peliculas.revisar', pelicula_id=pelicula.id) }}">
+          Buscar y elegir a mano
+        </a>
+        {% if pelicula.tiene_ficha %}
+          <form method="post" action="{{ url_for('peliculas.quitar_ficha', pelicula_id=pelicula.id) }}"
+                onsubmit="return confirm('Se borra la ficha guardada de esta pelicula. Los archivos del disco no se tocan. Continuar?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-secondary" type="submit">Borrar la ficha</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <form method="post" action="{{ url_for('peliculas.vincular', pelicula_id=pelicula.id) }}"
+            class="mt-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="enlace">Pegar el enlace de IMDb y vincularlo</label>
+        <div class="d-flex gap-2 flex-wrap">
+          <input class="form-control" style="max-width: 420px" type="url" id="enlace" name="enlace"
+                 value="{{ pelicula.imdb_id and pelicula.enlace_imdb or '' }}"
+                 placeholder="https://www.imdb.com/title/tt1234567/">
+          <button class="btn btn-secondary" type="submit">Vincular Imdb</button>
+        </div>
+        <div class="form-text">
+          Sirve sin clave de TMDb. Se aceptan enlaces en cualquier idioma, como
+          <code>/es/title/tt...</code>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/reproductor.js') }}"></script>
+  <script>
+    document.getElementById('completarFicha')?.addEventListener('click', async (evento) => {
+      const boton = evento.currentTarget;
+      boton.disabled = true;
+      boton.textContent = 'Consultando TMDb...';
+      const { ok, cuerpo } = await enviar(`/peliculas/${boton.dataset.pelicula}/completar`);
+      if (ok) {
+        window.location.reload();
+        return;
+      }
+      avisar(cuerpo.mensaje || 'No se pudo completar la ficha.', true);
+      if (cuerpo.url) setTimeout(() => { window.location.href = cuerpo.url; }, 1800);
+      boton.disabled = false;
+      boton.textContent = 'Completar ficha';
+    });
+  </script>
+{% endblock %}

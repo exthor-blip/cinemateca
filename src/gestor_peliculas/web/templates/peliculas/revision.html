@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block titulo %}Revisar {{ pelicula.titulo_carpeta }} &middot; Mi Cinemateca{% endblock %}
+{% block subtitulo %}Elegi la ficha correcta{% endblock %}
+
+{% block contenido %}
+  <a class="btn btn-secondary btn-sm mb-3"
+     href="{{ url_for('peliculas.ficha', pelicula_id=pelicula.id) }}">&larr; Volver a la ficha</a>
+
+  {# Se muestra el nombre de la carpeta tal cual esta en el disco: es el unico
+     dato seguro con el que comparar los candidatos. #}
+  <div class="tarjeta-conteo mb-3">
+    <div class="rotulo">Carpeta en el disco</div>
+    <div class="ruta-actual fs-6">
+      {{ pelicula.ubicacion_nombre }} / {{ pelicula.ruta_relativa or '(raiz)' }}
+    </div>
+    <div class="text-secondary small mt-1">
+      Titulo leido: <strong>{{ pelicula.titulo_carpeta }}</strong>
+      &middot; anio: <strong>{{ pelicula.anio_carpeta or 'no identificado' }}</strong>
+      &middot; archivo: {{ pelicula.archivo_video }}
+    </div>
+  </div>
+
+  {% if revision.get('detalle') %}
+    <div class="alert alert-warning">{{ revision.detalle }}</div>
+  {% endif %}
+  {% if aviso %}
+    <div class="alert alert-info">{{ aviso }}</div>
+  {% endif %}
+
+  <form method="get" class="mb-4">
+    <label class="form-label" for="q">Buscar en TMDb por titulo, o pegar un enlace de IMDb</label>
+    <div class="d-flex gap-2 flex-wrap">
+      <input class="form-control" style="max-width: 480px" type="search" id="q" name="q"
+             value="{{ consulta }}" required>
+      <button class="btn btn-primary" type="submit">Buscar</button>
+    </div>
+  </form>
+
+  {% if candidatos %}
+    <p class="cine-estado">
+      Compara el titulo, el anio y el poster antes de guardar. Solo se guarda la
+      ficha que elijas.
+    </p>
+    <div class="row g-3">
+      {% for candidato in candidatos %}
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="pelicula h-100">
+            {% if candidato.poster_url %}
+              <img class="poster" loading="lazy" src="{{ candidato.poster_url }}"
+                   alt="Poster propuesto para {{ candidato.titulo }}">
+            {% else %}
+              <div class="poster poster-vacio" role="img" aria-label="Sin poster">&#127902;</div>
+            {% endif %}
+            <div class="datos">
+              <div class="titulo">{{ candidato.titulo or 'Sin titulo' }}</div>
+              {% if candidato.titulo_original and candidato.titulo_original != candidato.titulo %}
+                <div class="text-secondary small fst-italic">{{ candidato.titulo_original }}</div>
+              {% endif %}
+              <div class="resumen">
+                <span class="anio">{{ candidato.anio or 'Sin anio' }}</span>
+                {% if candidato.anio and pelicula.anio_carpeta
+                      and candidato.anio != pelicula.anio_carpeta %}
+                  <span class="badge text-bg-warning">otro anio</span>
+                {% endif %}
+              </div>
+              {% if candidato.nota %}
+                <div class="text-secondary small">{{ candidato.nota }}</div>
+              {% endif %}
+
+              <div class="d-grid gap-2 mt-2">
+                {% if candidato.enlace %}
+                  <a class="btn btn-secondary btn-sm" href="{{ candidato.enlace }}"
+                     target="_blank" rel="noopener noreferrer">Ver la ficha en la fuente</a>
+                {% endif %}
+                <form method="post"
+                      action="{{ url_for('peliculas.guardar_candidato', pelicula_id=pelicula.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="tmdb_id" value="{{ candidato.tmdb_id or '' }}">
+                  <input type="hidden" name="imdb_id" value="{{ candidato.imdb_id }}">
+                  <button class="btn btn-primary btn-sm w-100" type="submit"
+                          {{ 'disabled' if not candidato.tmdb_id }}>
+                    Si, es esta: guardar
+                  </button>
+                </form>
+                {% if candidato.imdb_id %}
+                  <form method="post"
+                        action="{{ url_for('peliculas.rechazar', pelicula_id=pelicula.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="imdb_id" value="{{ candidato.imdb_id }}">
+                    <input type="hidden" name="q" value="{{ consulta }}">
+                    <button class="btn btn-secondary btn-sm w-100" type="submit">
+                      No es esta: descartarla
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if revision.get('rechazados') %}
+    <p class="cine-nota">
+      Ya descartaste {{ revision.rechazados | length }} ficha(s) para esta pelicula:
+      no se vuelven a ofrecer.
+    </p>
+  {% endif %}
+
+  <hr class="my-4">
+
+  <form method="post" action="{{ url_for('peliculas.vincular', pelicula_id=pelicula.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label" for="enlace">
+      Ultima alternativa: pegar el enlace de IMDb y vincularlo sin ficha
+    </label>
+    <div class="d-flex gap-2 flex-wrap">
+      <input class="form-control" style="max-width: 420px" type="url" id="enlace" name="enlace"
+             placeholder="https://www.imdb.com/title/tt1234567/" required>
+      <button class="btn btn-secondary" type="submit">Vincular Imdb</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block titulo %}Organizador &middot; Mi Cinemateca{% endblock %}
+{% block subtitulo %}Analisis, renombramiento y limpieza con control previo{% endblock %}
+
+{% block contenido %}
+  {# Elegir la coleccion a analizar. #}
+  <form method="post" action="{{ url_for('organizador.analizar') }}" class="mb-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label" for="ruta">Carpeta principal de peliculas</label>
+    <div class="d-flex gap-2 flex-wrap">
+      <input class="form-control" style="min-width: 260px; max-width: 520px" type="text"
+             id="ruta" name="ruta" value="{{ ruta }}" required
+             placeholder="D:\Peliculas">
+      <button class="btn btn-primary" type="submit">Analizar carpetas</button>
+      {% if ubicaciones %}
+        <div class="dropdown">
+          <button class="btn btn-secondary dropdown-toggle" type="button"
+                  data-bs-toggle="dropdown">Usar una ubicacion del catalogo</button>
+          <ul class="dropdown-menu">
+            {% for ubicacion in ubicaciones %}
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('organizador.index', ruta=ubicacion.ruta) }}">
+                  {{ ubicacion.nombre }}
+                  <span class="text-secondary small">{{ ubicacion.ruta }}</span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if aviso %}
+    <div class="alert alert-warning">{{ aviso }}</div>
+  {% endif %}
+
+  {% if tarea %}
+    <div class="mb-3 panel-tarea" data-tarea="{{ tarea.id }}"
+         {{ 'data-viva=1' if tarea.estado.viva }}>
+      <div class="d-flex justify-content-between align-items-baseline">
+        <strong>{{ tarea.titulo }}</strong>
+        <span class="text-secondary small js-estado">{{ tarea.estado.etiqueta }}</span>
+      </div>
+      <div class="progress mt-1" role="progressbar" aria-label="{{ tarea.titulo }}">
+        <div class="progress-bar js-barra" style="width: {{ tarea.porcentaje }}%"></div>
+      </div>
+      <div class="cine-estado js-mensaje">{{ tarea.mensaje }}</div>
+      {% if tarea.estado.viva %}
+        <form method="post" action="{{ url_for('organizador.detener') }}" class="mt-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="ruta" value="{{ ruta }}">
+          <button class="btn btn-secondary btn-sm" type="submit">Detener</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if not analisis %}
+    <div class="cine-vacio">
+      Elegi una carpeta y pulsa <strong>Analizar carpetas</strong>.
+      El analisis solo mira: no renombra ni borra nada.
+    </div>
+  {% else %}
+    <div class="row g-2 mb-3">
+      {% for rotulo, numero in [
+            ('Carpetas', analisis.carpetas),
+            ('Pares validos', analisis.pares | length),
+            ('Solo video', analisis.sueltos | length),
+            ('Otros archivos', analisis.total_extras)] %}
+        <div class="col-6 col-lg-3">
+          <div class="tarjeta-conteo">
+            <div class="rotulo">{{ rotulo }}</div>
+            <div class="numero">{{ numero }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {# Las mismas cuatro pestanas de la ventana original. #}
+    <ul class="nav nav-tabs" role="tablist">
+      {% for id, titulo, cantidad in [
+            ('pares', '1 &middot; Renombrar pares', analisis.pares | length),
+            ('sueltos', '2 &middot; Solo video', analisis.sueltos | length),
+            ('limpieza', '3 &middot; Limpieza', analisis.extras | length),
+            ('incidencias', '4 &middot; Incidencias', analisis.incidencias | length)] %}
+        <li class="nav-item" role="presentation">
+          <button class="nav-link {{ 'active' if loop.first }}" data-bs-toggle="tab"
+                  data-bs-target="#panel-{{ id }}" type="button" role="tab">
+            {{ titulo | safe }} <span class="badge text-bg-secondary">{{ cantidad }}</span>
+          </button>
+        </li>
+      {% endfor %}
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-minusculas"
+                type="button" role="tab">5 &middot; Minusculas</button>
+      </li>
+    </ul>
+
+    <div class="tab-content p-3" style="background: var(--cine-panel);
+         border: 1px solid var(--bs-border-color); border-top: 0;
+         border-radius: 0 0 9px 9px">
+
+      {# ------------------------------------------------------------ pares #}
+      <div class="tab-pane fade show active" id="panel-pares" role="tabpanel">
+        <p>
+          Un video y uno o dos subtitulos. Los tres pasan a llamarse igual que su
+          carpeta; el segundo subtitulo recibe el sufijo <code>1</code>.
+        </p>
+        {% if analisis.pares_pendientes %}
+          <form method="post" action="{{ url_for('organizador.renombrar_pares') }}"
+                class="mb-3 d-flex gap-3 align-items-center flex-wrap">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="ruta" value="{{ ruta }}">
+            <button class="btn btn-secondary" type="submit">
+              Simular ({{ analisis.pares_pendientes | length }} carpetas)
+            </button>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="si" name="confirmar"
+                     id="confirmarPares">
+              <label class="form-check-label" for="confirmarPares">
+                Confirmo que quiero <strong>renombrar de verdad</strong>
+              </label>
+            </div>
+          </form>
+        {% endif %}
+
+        <div class="table-responsive">
+          <table class="table table-sm tabla-organizador">
+            <thead>
+              <tr><th>Carpeta</th><th>Video actual</th><th>Subtitulos</th>
+                  <th>Nombres propuestos</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+              {% for par in analisis.pares %}
+                <tr>
+                  <td>{{ par.nombre_carpeta }}</td>
+                  <td>{{ par.video.name }}</td>
+                  <td>{{ par.texto_subtitulos }}</td>
+                  <td>{{ par.destino_video.name }} | {{ par.texto_destinos }}</td>
+                  <td>
+                    <span class="badge text-bg-{{ 'success' if par.correcto else 'warning' }}">
+                      {{ par.estado }}</span>
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="5" class="text-secondary">No hay pares en esta coleccion.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# ---------------------------------------------------------- sueltos #}
+      <div class="tab-pane fade" id="panel-sueltos" role="tabpanel">
+        <p>Carpetas con exactamente un video y sin subtitulos.</p>
+        {% if analisis.sueltos_pendientes %}
+          <form method="post" action="{{ url_for('organizador.renombrar_sueltos') }}"
+                class="mb-3 d-flex gap-3 align-items-center flex-wrap">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="ruta" value="{{ ruta }}">
+            <button class="btn btn-secondary" type="submit">
+              Simular ({{ analisis.sueltos_pendientes | length }} videos)
+            </button>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="si" name="confirmar"
+                     id="confirmarSueltos">
+              <label class="form-check-label" for="confirmarSueltos">
+                Confirmo que quiero <strong>renombrar de verdad</strong>
+              </label>
+            </div>
+          </form>
+        {% endif %}
+
+        <div class="table-responsive">
+          <table class="table table-sm tabla-organizador">
+            <thead>
+              <tr><th>Carpeta</th><th>Video actual</th><th>Nombre propuesto</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+              {% for suelto in analisis.sueltos %}
+                <tr>
+                  <td>{{ suelto.nombre_carpeta }}</td>
+                  <td>{{ suelto.video.name }}</td>
+                  <td>{{ suelto.destino.name }}</td>
+                  <td>
+                    <span class="badge text-bg-{{ 'success' if suelto.correcto else 'warning' }}">
+                      {{ suelto.estado }}</span>
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="4" class="text-secondary">No hay videos sin subtitulos.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# --------------------------------------------------------- limpieza #}
+      <div class="tab-pane fade" id="panel-limpieza" role="tabpanel">
+        <p>
+          Archivos que no son video ni subtitulo, agrupados por extension.
+          Todo va a la <strong>Papelera de reciclaje</strong>: nada se borra de
+          forma definitiva, y se puede recuperar desde el Explorador.
+        </p>
+        <form method="post" action="{{ url_for('organizador.limpiar') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="ruta" value="{{ ruta }}">
+
+          <div class="table-responsive">
+            <table class="table table-sm tabla-organizador">
+              <thead>
+                <tr><th style="width: 70px">Elegir</th><th>Extension</th>
+                    <th class="text-end">Cantidad</th><th class="text-end">Tamanio</th></tr>
+              </thead>
+              <tbody>
+                {% for grupo in analisis.extras %}
+                  <tr>
+                    <td>
+                      {# Todas arrancan desmarcadas, como en el original. #}
+                      <input class="form-check-input" type="checkbox" name="extension"
+                             value="{{ grupo.extension }}" id="ext-{{ loop.index }}">
+                    </td>
+                    <td><label for="ext-{{ loop.index }}">{{ grupo.extension }}</label></td>
+                    <td class="text-end">{{ grupo.cantidad }}</td>
+                    <td class="text-end">{{ grupo.bytes | tamanio_es }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-secondary">
+                    No hay archivos sueltos para limpiar.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% if analisis.extras %}
+            <div class="d-flex gap-3 align-items-center flex-wrap">
+              <button class="btn btn-secondary" type="submit">Simular la limpieza</button>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="si" name="confirmar"
+                       id="confirmarLimpieza">
+                <label class="form-check-label" for="confirmarLimpieza">
+                  Confirmo que quiero <strong>enviarlos a la Papelera</strong>
+                </label>
+              </div>
+              <span class="text-secondary small">
+                Total de archivos sueltos: {{ analisis.total_extras }}
+                ({{ analisis.megabytes_extras }} MB)
+              </span>
+            </div>
+          {% endif %}
+        </form>
+      </div>
+
+      {# ------------------------------------------------------ incidencias #}
+      <div class="tab-pane fade" id="panel-incidencias" role="tabpanel">
+        <p>
+          Carpetas ambiguas. No se modifican nunca de forma automatica: hay que
+          mirarlas a mano.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-sm tabla-organizador">
+            <thead><tr><th>Carpeta</th><th>Motivo</th></tr></thead>
+            <tbody>
+              {% for incidencia in analisis.incidencias %}
+                <tr>
+                  <td class="ruta-actual">{{ incidencia.carpeta }}</td>
+                  <td>{{ incidencia.motivo }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="2" class="text-secondary">
+                  No hay incidencias: toda la coleccion se puede organizar.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# ------------------------------------------------------- minusculas #}
+      <div class="tab-pane fade" id="panel-minusculas" role="tabpanel">
+        <p>
+          Pasa a minusculas los nombres de carpetas y archivos de toda la coleccion.
+          Se conservan las extensiones, las tildes y las enies. No se modifica la
+          carpeta principal que elegiste, ni los archivos protegidos
+          (<code>imdb.url</code>, <code>poster.jpg</code>, los informes).
+        </p>
+        <form method="post" action="{{ url_for('organizador.minusculas') }}"
+              class="d-flex gap-3 align-items-center flex-wrap">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="ruta" value="{{ ruta }}">
+          <button class="btn btn-secondary" type="submit">Simular la conversion</button>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="si" name="confirmar"
+                   id="confirmarMinusculas">
+            <label class="form-check-label" for="confirmarMinusculas">
+              Confirmo que quiero <strong>renombrar de verdad</strong>
+            </label>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <p class="cine-nota">
+      Cada operacion que escribe en el disco deja dos CSV en
+      <code>{{ analisis.raiz }}\_Informes_Organizador</code>: el informe de la
+      coleccion y el historial de renombramientos, con el mismo formato que
+      generaba el Organizador original.
+    </p>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/progreso.js') }}"></script>
+{% endblock %}

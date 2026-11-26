@@ -1,0 +1,82 @@
+{# Buscador, filtros y acciones del catalogo.
+   Todo va por GET para que una busqueda quede en la URL y en el historial:
+   es la ventaja concreta de haber movido el filtrado al servidor. #}
+<form method="get" action="{{ url_for('catalogo.index') }}" id="formFiltros">
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <input type="search" class="form-control cine-buscador" name="q" value="{{ filtro.texto }}"
+           placeholder="Buscar por titulo, titulo original o anio..." autocomplete="off">
+    <button class="btn btn-primary" type="submit">Buscar</button>
+    {% if filtro.activo %}
+      <a class="btn btn-secondary" href="{{ url_for('catalogo.index') }}">Limpiar filtros</a>
+    {% endif %}
+    <a class="btn btn-secondary" href="{{ url_for('ubicaciones.index') }}">&#128193; Agregar carpeta</a>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <select class="form-select w-auto" name="pais" onchange="this.form.submit()">
+      <option value="">Pais &middot; Todos</option>
+      {% for opcion in facetas.paises %}
+        <option value="{{ opcion.valor }}" {{ 'selected' if filtro.pais == opcion.valor }}>
+          {{ opcion.etiqueta }}</option>
+      {% endfor %}
+    </select>
+
+    <select class="form-select w-auto" name="anio" onchange="this.form.submit()">
+      <option value="">Anio &middot; Todos</option>
+      {% for opcion in facetas.anios %}
+        <option value="{{ opcion.valor }}" {{ 'selected' if filtro.anio == opcion.valor }}>
+          {{ opcion.etiqueta }}</option>
+      {% endfor %}
+    </select>
+
+    <select class="form-select w-auto" name="genero" onchange="this.form.submit()">
+      <option value="">Genero &middot; Todos</option>
+      {% for opcion in facetas.generos %}
+        <option value="{{ opcion.valor }}" {{ 'selected' if filtro.genero == opcion.valor }}>
+          {{ opcion.etiqueta }}</option>
+      {% endfor %}
+    </select>
+
+    <select class="form-select w-auto" name="idioma" onchange="this.form.submit()">
+      <option value="">Idioma &middot; Todos</option>
+      {% for opcion in facetas.idiomas %}
+        <option value="{{ opcion.valor }}" {{ 'selected' if filtro.idioma == opcion.valor }}>
+          {{ opcion.etiqueta }}</option>
+      {% endfor %}
+    </select>
+
+    <select class="form-select w-auto" name="ficha" onchange="this.form.submit()">
+      {% for estado in estados_ficha %}
+        <option value="{{ estado.value }}" {{ 'selected' if filtro.ficha == estado }}>
+          {{ estado.etiqueta }}</option>
+      {% endfor %}
+    </select>
+
+    {% if facetas.ubicaciones | length > 1 %}
+      <select class="form-select w-auto" name="ubicacion" onchange="this.form.submit()">
+        <option value="">Ubicacion &middot; Todas</option>
+        {% for id, nombre, cantidad in facetas.ubicaciones %}
+          <option value="{{ id }}" {{ 'selected' if filtro.ubicacion_id == id }}>
+            {{ nombre }} ({{ cantidad }})</option>
+        {% endfor %}
+      </select>
+    {% endif %}
+
+    <select class="form-select w-auto" name="orden" onchange="this.form.submit()">
+      {% for orden in ordenes %}
+        <option value="{{ orden.value }}" {{ 'selected' if filtro.orden == orden }}>
+          {{ orden.etiqueta }}</option>
+      {% endfor %}
+    </select>
+
+    {# El toggle "Sin enlace Imdb" conserva el aria-pressed del original. #}
+    <a class="btn btn-secondary btn-filtro" aria-pressed="{{ 'true' if filtro.sin_imdb else 'false' }}"
+       href="{{ url_for('catalogo.index') }}?{{ filtro.como_parametros(sin_imdb='' if filtro.sin_imdb else '1', pagina=1) }}">
+      {% if filtro.sin_imdb %}
+        Ver todas &middot; {{ resumen.sin_imdb }} sin enlace Imdb
+      {% else %}
+        Sin enlace Imdb ({{ resumen.sin_imdb }})
+      {% endif %}
+    </a>
+  </div>
+</form>

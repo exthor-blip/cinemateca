@@ -1,0 +1,45 @@
+{# Una tarjeta de pelicula. Misma estructura visual que la del original:
+   poster 2/3, titulo, anio y puntaje en una linea, y tres acciones de texto. #}
+<article class="pelicula">
+  <div class="envoltorio-poster">
+    {% if pelicula.poster_relativo %}
+      <img class="poster" loading="lazy" alt="Poster de {{ pelicula.titulo }}"
+           src="{{ url_for('medios.poster', pelicula_id=pelicula.id) }}">
+    {% else %}
+      {# SVG propio en lugar de un emoji: el emoji de pelicula se dibuja en
+         blanco y negro en Windows y se confunde con un icono de imagen rota. #}
+      <div class="poster poster-vacio" role="img" aria-label="Sin poster">
+        <svg viewBox="0 0 48 64" width="46" height="62" aria-hidden="true" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+          <rect x="4" y="5" width="40" height="54" rx="3"/>
+          <path d="M14 5v54M34 5v54"/>
+          <path d="M4 18h10M4 32h10M4 46h10M34 18h10M34 32h10M34 46h10"/>
+        </svg>
+      </div>
+    {% endif %}
+    {% if not pelicula.imdb_id %}
+      <span class="badge text-bg-warning cine-insignia-copias" title="Sin enlace de IMDb">
+        sin Imdb</span>
+    {% endif %}
+  </div>
+
+  <div class="datos">
+    <div class="titulo" title="{{ pelicula.titulo }}">{{ pelicula.titulo }}</div>
+
+    <div class="resumen">
+      <span class="anio">{{ pelicula.anio or 'Sin anio' }}</span>
+      {% if pelicula.puntaje %}
+        <span class="puntaje" aria-label="Puntaje de IMDb: {{ pelicula.puntaje.puntaje }} de 10">
+          <span class="estrella" aria-hidden="true">&#9733;</span>
+          {{ pelicula.puntaje.puntaje | puntaje_es }}
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="acciones">
+      <a href="{{ url_for('peliculas.ficha', pelicula_id=pelicula.id) }}">Ficha</a>
+      <a href="{{ pelicula.enlace_imdb }}" target="_blank" rel="noopener noreferrer">Imdb</a>
+      <button type="button" class="btn btn-reproducir" data-pelicula="{{ pelicula.id }}">Video</button>
+    </div>
+  </div>
+</article>

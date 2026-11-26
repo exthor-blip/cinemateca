@@ -1,0 +1,45 @@
+{# Estructura comun de todas las paginas.
+   Bootstrap y el CSS propio se sirven desde la carpeta static: la aplicacion
+   funciona sin internet, que es lo que corresponde para un catalogo local. #}
+<!doctype html>
+<html lang="es" data-bs-theme="{{ session.get('tema', 'light') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# El token va en un meta para que los fetch lo encuentren siempre, haya o no
+     un formulario en la pagina. #}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block titulo %}Mi Cinemateca{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/cinemateca.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127916;</text></svg>">
+</head>
+<body>
+  <header class="cine-encabezado d-flex justify-content-between align-items-center gap-3 flex-wrap">
+    <div>
+      <h1>
+        <a href="{{ url_for('catalogo.index') }}" class="text-decoration-none text-body">
+          &#127916; Mi Cinemateca</a>
+        <small>{{ version }}</small>
+      </h1>
+      <small class="text-secondary">{% block subtitulo %}Catalogo visual de tu coleccion{% endblock %}</small>
+    </div>
+    <nav class="d-flex align-items-center gap-2 flex-wrap">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('catalogo.index') }}">Catalogo</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('ubicaciones.index') }}">Ubicaciones</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('organizador.index') }}">Organizador</a>
+      <button class="btn btn-secondary btn-sm" id="cambiarTema" type="button"
+              title="Cambiar entre tema claro y oscuro">&#9680;</button>
+      {% block pastilla %}{% endblock %}
+    </nav>
+  </header>
+
+  <main class="cine-contenido">
+    {% block contenido %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/comun.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

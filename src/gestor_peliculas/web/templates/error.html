@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titulo %}Mi Cinemateca &middot; {{ codigo }}{% endblock %}
+{% block subtitulo %}Algo no salio bien{% endblock %}
+
+{% block contenido %}
+  <div class="cine-vacio">
+    <p class="fs-5 mb-3">{{ mensaje }}</p>
+    <a class="btn btn-primary" href="{{ url_for('catalogo.index') }}">Volver al catalogo</a>
+  </div>
+{% endblock %}
